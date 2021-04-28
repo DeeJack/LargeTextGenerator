@@ -1,14 +1,20 @@
 package me.deejack;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.Duration;
 import java.util.Scanner;
 
 public class LargeTextGenerator {
   public static void main(String[] args) {
-    Scanner sc = new Scanner(System.in);
+    buildStringFromStream(System.in);
+  }
+
+  public static void buildStringFromStream(InputStream stream) {
+    Scanner sc = new Scanner(stream);
     System.out.print("Path: ");
     String path = sc.nextLine();
 
@@ -37,6 +43,14 @@ public class LargeTextGenerator {
     System.out.print("Last string (if you need to search in the file): ");
     String toFind = sc.nextLine();
 
+    System.out.print("Separator character (between every character, \\n accepted): ");
+    String separator = sc.nextLine();
+    char c = separator.length() == 0 ? '\0' : separator.charAt(0);
+    if (separator.length() > 1 && separator.startsWith("\\n"))
+      c = '\n';
+    if (c != '\0')
+      size /= 2;
+
     /* Create a generator function for every choice */
     StringGenerator generator;
     if (choice == 1) {
@@ -56,7 +70,7 @@ public class LargeTextGenerator {
       if (phases > 1) // If I have more than one phase
         newSize = size / (long) phases; // Get the size to reach for the phase
 
-      StringBuilder builder = buildString(newSize, generator); // Build the string using the generator until the size is reached
+      StringBuilder builder = buildString(newSize, generator, c); // Build the string using the generator until the size is reached
       builder.append(toFind);
       try {
         // Create the file if it doesn't exists, then append
@@ -64,16 +78,17 @@ public class LargeTextGenerator {
       } catch (IOException ex) {
         System.err.println("Couldn't find the file");
       }
-      System.gc();
     }
   }
 
-  public static StringBuilder buildString(long size, StringGenerator generator) {
+  public static StringBuilder buildString(long size, StringGenerator generator, char separator) {
     StringBuilder builder = new StringBuilder();
     long i = 0;
     try {
       for (; i < size; i++) {
         builder.append(generator.generate(i));
+        if (separator != '\0')
+          builder.append(separator);
       }
     } catch (OutOfMemoryError error) {
       // Error thrown if the JVM doesn't have enough memory (HEAP)
